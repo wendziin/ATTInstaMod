@@ -1,114 +1,127 @@
-const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio'); // Equivalente ao BeautifulSoup em Node.js
-const path = require('path');
-
-const app = express();
-const PORT = process.env.PORT || 3000; // O Render define a porta automaticamente
-
-// --- Rota da API para Scraping ---
-app.get('/api/scrape', async (req, res) => {
-    const targetURL = 'https://www.instamod.app/?m=1';
-    
-    // Headers para simular um navegador
-    const headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    };
-
-    try {
-        const response = await axios.get(targetURL, { headers });
-        const htmlText = response.data;
-
-        // Carrega o HTML no Cheerio (nosso "BeautifulSoup")
-        const $ = cheerio.load(htmlText);
-
-        const appSections = $('details[data-det]');
-        
-        if (appSections.length === 0) {
-            return res.status(404).json({ error: 'Nenhuma seção de app encontrada. O site pode ter mudado.' });
-        }
-
-        const appsData = [];
-
-        appSections.each((index, element) => {
-            const section = $(element);
-            const titleTag = section.find('.t');
-            const logoTag = section.find('.img.lazy');
-            const linkTags = section.find('div > a'); // Links dentro da div
-            
-            if (!titleTag.text()) {
-                return; // Pula seções sem título
-            }
-
-            if (linkTags.length > 0) {
-                const title = titleTag.text().trim().replace(/\s\s+/g, ' '); // Limpa o título
-                const logoUrl = extractLogoUrl(logoTag);
-                const downloadLinks = [];
-
-                linkTags.each((i, linkEl) => {
-                    const linkTag = $(linkEl);
-                    const href = linkTag.attr('href') || '';
-                    const text = linkTag.text().trim();
-                    const mediafireLink = extractMediaFireLink(href);
-                    
-                    if (mediafireLink) {
-                        downloadLinks.push({
-                            text: text,
-                            href: mediafireLink
-                        });
+<!DOCTYPE html>
+<html lang="pt-br" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Apps InstaMod</title>
+    <!-- Carrega o Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configuração de cores personalizadas do Tailwind
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Cor primária baseada no site original
+                        primary: '#ff5fb5', 
                     }
-                });
-
-                if (downloadLinks.length > 0) {
-                    appsData.push({
-                        title: title,
-                        logoUrl: logoUrl,
-                        links: downloadLinks
-                    });
                 }
             }
-        });
-
-        // Envia os dados como JSON
-        res.json(appsData);
-
-    } catch (error) {
-        console.error('Erro no scraping:', error.message);
-        res.status(500).json({ error: 'Falha ao buscar dados do site de origem.' });
-    }
-});
-
-// --- Funções Auxiliares de Scraping ---
-function extractMediaFireLink(href) {
-    const urls = href.split(',');
-    for (const url of urls) {
-        if (url.includes('mediafire.com')) {
-            return url.trim();
         }
-    }
-    return null;
-}
+    </script>
+    <style>
+        /* Estilo para a animação de carregamento */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
 
-function extractLogoUrl(logoTag) {
-    if (!logoTag || !logoTag.attr('data-style')) {
-        // Retorna um placeholder SVG
-        return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm15-9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z' /%3E%3C/svg%3E";
-    }
-    const dataStyle = logoTag.attr('data-style') || '';
-    const match = dataStyle.match(/url\((.*?)\)/);
-    return match ? match[1].replace(/['"]/g, '') : '';
-}
+    <!-- Cabeçalho -->
+    <header class="bg-primary shadow-lg">
+        <div class="container mx-auto px-4 py-5">
+            <h1 class="text-3xl font-bold text-white text-center">Buscador de Links InstaMod</h1>
+            <p class="text-center text-white opacity-80">Resultados diretos do MediaFire</p>
+        </div>
+    </header>
 
-// --- Servir o Frontend ---
-// Informa ao Express para servir arquivos estáticos da pasta 'public'
-app.use(express.static(path.join(__dirname, 'public')));
+    <!-- Container Principal -->
+    <main class="container mx-auto p-4">
+        
+        <!-- Estado de Carregamento -->
+        <div id="loading-state" class="text-center py-10">
+            <div class="spinner w-12 h-12 border-4 border-t-primary border-gray-600 rounded-full mx-auto"></div>
+            <p class="mt-4 text-lg text-gray-400">Buscando atualizações...</p>
+        </div>
 
-// Rota principal para servir o index.html
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+        <!-- Estado de Erro -->
+        <div id="error-state" class="hidden bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg my-4">
+            <h3 class="font-bold text-lg">Erro ao buscar dados</h3>
+            <p id="error-message">Não foi possível carregar os dados. Tente novamente mais tarde.</p>
+        </div>
 
-// Inicia o servidor
-app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-});
+        <!-- Resultados -->
+        <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Os cards dos apps serão inseridos aqui pelo JavaScript -->
+        </div>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', fetchData);
+
+        async function fetchData() {
+            const loadingEl = document.getElementById('loading-state');
+            const errorEl = document.getElementById('error-state');
+            const errorMessageEl = document.getElementById('error-message');
+            const resultsEl = document.getElementById('results-container');
+
+            try {
+                // FAZ A CHAMADA PARA A API DO NOSSO PRÓPRIO SERVIDOR
+                const response = await fetch('/api/scrape');
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Erro ${response.status}: Falha na requisição`);
+                }
+
+                const apps = await response.json();
+
+                if (apps.length === 0) {
+                    throw new Error("Nenhum app com link do MediaFire foi encontrado. O site pode ter mudado.");
+                }
+
+                loadingEl.classList.add('hidden'); // Esconde o "carregando"
+                resultsEl.innerHTML = ''; // Limpa resultados antigos
+
+                // Cria um card para cada app
+                apps.forEach(app => {
+                    const card = `
+                        <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+                            <div class="flex items-center p-4">
+                                <img src="${app.logoUrl}" alt="Logo" class="w-16 h-16 bg-gray-700 rounded-md object-cover mr-4 flex-shrink-0">
+                                <h2 class="text-xl font-bold text-white flex-grow">${app.title}</h2>
+                            </div>
+                            <div class="px-4 pb-4 mt-auto">
+                                <h3 class="text-sm font-semibold text-gray-400 mb-2">Links de Download (MediaFire):</h3>
+                                <div class="flex flex-col space-y-2">
+                                    ${app.links.map(link => `
+                                        <a href="${link.href}" 
+                                           target="_blank" 
+                                           rel="noopener noreferrer"
+                                           class="bg-primary/20 text-primary font-medium py-2 px-3 rounded-md text-sm text-center truncate hover:bg-primary/40 transition-colors">
+                                            ${link.text}
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    resultsEl.innerHTML += card;
+                });
+
+            } catch (error) {
+                console.error('Erro detalhado:', error);
+                loadingEl.classList.add('hidden'); // Esconde o "carregando"
+                errorMessageEl.textContent = error.message;
+                errorEl.classList.remove('hidden'); // Mostra o erro
+            }
+        }
+    </script>
+</body>
+</html>
+
