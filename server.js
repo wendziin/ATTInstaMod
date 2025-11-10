@@ -100,12 +100,12 @@ function extractLogoUrl(logoTag) {
 }
 
 // --- Servir o Frontend ---
-// Informa ao Express para servir arquivos estáticos da pasta 'public'
-app.use(express.static(path.join(__dirname, 'public')));
+// *** CORREÇÃO: Servir arquivos da pasta raiz (__dirname) ***
+app.use(express.static(__dirname));
 
-// Rota principal para servir o index.html
+// *** CORREÇÃO: Rota principal para servir o index.html da raiz ***
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Inicia o servidor
