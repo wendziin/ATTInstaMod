@@ -39,10 +39,14 @@ async function scrapeSource(url) {
                     const linkTag = $(linkEl);
                     const href = linkTag.attr('href') || '';
                     const text = linkTag.text().trim();
-                    const mediafireLink = extractMediaFireLink(href);
+                    const downloadInfo = extractDownloadLink(href);
                     
-                    if (mediafireLink) {
-                        downloadLinks.push({ text: text, href: mediafireLink });
+                    if (downloadInfo) {
+                        downloadLinks.push({ 
+                            text: text, 
+                            href: downloadInfo.url, 
+                            type: downloadInfo.type 
+                        });
                     }
                 });
 
@@ -93,14 +97,38 @@ app.get('/api/scrape', async (req, res) => {
     }
 });
 
-// --- Funções Auxiliares (Mantidas iguais) ---
-function extractMediaFireLink(href) {
+// --- Funções Auxiliares ---
+function extractDownloadLink(href) {
+    if (!href) return null;
     const urls = href.split(',');
+    
     for (const url of urls) {
-        if (url.includes('mediafire.com')) {
-            return url.trim();
+        const trimmedUrl = url.trim();
+        if (trimmedUrl.includes('mediafire.com')) {
+            return { url: trimmedUrl, type: 'mediafire' };
+        }
+        if (trimmedUrl.includes('drive.google.com') || trimmedUrl.includes('drive.usercontent.google.com')) {
+            return { url: trimmedUrl, type: 'gdrive' };
+        }
+        if (trimmedUrl.includes('mega.nz')) {
+            return { url: trimmedUrl, type: 'mega' };
         }
     }
+
+    // Se tiver mais de um link e nenhum for dos principais, pega o último
+    if (urls.length > 1) {
+        const lastUrl = urls[urls.length - 1].trim();
+        if (!lastUrl.includes('do.fantastindents.com') && lastUrl.startsWith('http')) {
+            return { url: lastUrl, type: 'direct' };
+        }
+    }
+
+    // Se tiver apenas 1 link
+    const singleUrl = urls[0].trim();
+    if (singleUrl.startsWith('http') && !singleUrl.includes('do.fantastindents.com')) {
+        return { url: singleUrl, type: 'direct' };
+    }
+
     return null;
 }
 

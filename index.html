@@ -3,125 +3,484 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador de Apps InstaMod</title>
+    <title>ATTInstaMod - Buscador de Links Direct & MediaFire</title>
+    
+    <!-- Configurações PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ATTInstaMod">
+    <link rel="apple-touch-icon" href="/app_logo.jpg">
+    <meta name="theme-color" content="#ff5fb5">
+
     <!-- Carrega o Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Configuração de cores personalizadas do Tailwind
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        // Cor primária baseada no site original
-                        primary: '#ff5fb5', 
+                        primary: '#ff5fb5',
+                        secondary: '#8b5cf6',
+                        darkBg: '#090d16',
+                        cardBg: '#131926'
                     }
                 }
             }
         }
     </script>
+    
     <style>
-        /* Estilo para a animação de carregamento */
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Outfit', sans-serif;
         }
-        .spinner {
-            animation: spin 1s linear infinite;
+
+        /* Efeito Shimmer para o Skeleton Loader */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer-loader {
+            background: linear-gradient(90deg, #1b2336 25%, #2a3550 50%, #1b2336 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+
+        /* Personalização do scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f293d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff5fb5;
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
+<body class="bg-darkBg text-slate-100 min-h-screen flex flex-col selection:bg-primary selection:text-white overflow-x-hidden">
+
+    <!-- Efeitos de Brilho no Background (Blur Glows) -->
+    <div class="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none -z-10"></div>
+    <div class="absolute top-1/3 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-[100px] pointer-events-none -z-10"></div>
+
+    <!-- Banner de Instalação do PWA (Oculto por padrão, aparece via JS se instalável) -->
+    <div id="install-banner" class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md bg-cardBg/90 border border-primary/40 backdrop-blur-md p-4 rounded-2xl shadow-2xl z-50 flex-col md:flex-row items-center justify-between gap-4 animate-bounce">
+        <div class="flex items-center gap-3">
+            <img src="/app_logo.jpg" alt="Logo" class="w-12 h-12 rounded-xl object-cover border border-primary/30">
+            <div>
+                <h4 class="font-bold text-white text-sm">ATTInstaMod no Celular</h4>
+                <p class="text-xs text-slate-400">Instale o app para baixar mods rapidamente da tela inicial!</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 w-full md:w-auto">
+            <button id="close-install-btn" class="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors">
+                Agora não
+            </button>
+            <button id="install-btn" class="flex-1 md:flex-none bg-primary hover:bg-primary/80 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-primary/20">
+                Instalar
+            </button>
+        </div>
+    </div>
 
     <!-- Cabeçalho -->
-    <header class="bg-primary shadow-lg">
-        <div class="container mx-auto px-4 py-5">
-            <h1 class="text-3xl font-bold text-white text-center">Buscador de Links InstaMod</h1>
-            <p class="text-center text-white opacity-80">Resultados diretos do MediaFire</p>
+    <header class="border-b border-slate-800/80 backdrop-blur-md sticky top-0 z-40 bg-darkBg/80">
+        <div class="container mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-1 rounded-xl bg-gradient-to-tr from-primary to-secondary shadow-lg shadow-primary/20">
+                    <img src="/app_logo.jpg" alt="Logo" class="w-10 h-10 rounded-lg object-cover">
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-primary bg-clip-text text-transparent">
+                        ATTInstaMod
+                    </h1>
+                    <p class="text-[10px] text-primary font-bold tracking-widest uppercase">Central de Mods Android</p>
+                </div>
+            </div>
+            
+            <div class="text-center sm:text-right hidden sm:block">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    Servidor Online
+                </span>
+            </div>
         </div>
     </header>
 
     <!-- Container Principal -->
-    <main class="container mx-auto p-4">
+    <main class="container mx-auto px-4 py-8 flex-grow">
         
-        <!-- Estado de Carregamento -->
-        <div id="loading-state" class="text-center py-10">
-            <div class="spinner w-12 h-12 border-4 border-t-primary border-gray-600 rounded-full mx-auto"></div>
-            <p class="mt-4 text-lg text-gray-400">Buscando atualizações...</p>
-        </div>
+        <!-- Seção de Busca e Filtros -->
+        <section class="max-w-4xl mx-auto mb-10">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-2">Seus Apps Favoritos Atualizados</h2>
+                <p class="text-slate-400 text-sm md:text-base">Coleta automática de links diretos do MediaFire, Google Drive e Mega.</p>
+            </div>
+
+            <!-- Caixa de pesquisa estilo Glassmorphism -->
+            <div class="bg-cardBg/60 border border-slate-800 backdrop-blur-md p-4 rounded-3xl shadow-xl flex flex-col md:flex-row gap-3">
+                <!-- Campo de busca -->
+                <div class="relative flex-grow">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-500">
+                        <!-- Ícone de Lupa -->
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'></path></svg>
+                    </span>
+                    <input type="text" id="search-input" placeholder="Pesquisar por Instagram, YouTube, Thunder..." 
+                           class="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 pl-11 pr-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary/60 transition-colors">
+                </div>
+
+                <!-- Abas de Filtro -->
+                <div class="flex gap-2 overflow-x-auto py-1 justify-start md:justify-end shrink-0" id="filter-tabs">
+                    <button data-filter="all" class="filter-btn active bg-primary text-white text-xs font-bold px-4 py-3 rounded-2xl transition-all shadow-md shadow-primary/20 shrink-0">
+                        Todos
+                    </button>
+                    <button data-filter="instagram" class="filter-btn bg-slate-900/50 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold px-4 py-3 rounded-2xl border border-slate-800/80 transition-all shrink-0">
+                        Instagram Mods
+                    </button>
+                    <button data-filter="youtube" class="filter-btn bg-slate-900/50 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold px-4 py-3 rounded-2xl border border-slate-800/80 transition-all shrink-0">
+                        YouTube Pro / MicroG
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Estado de Carregamento (Skeleton Loader) -->
+        <section id="loading-state" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <!-- Gerando 6 cards esqueleto para dar sensação premium -->
+            <div class="bg-cardBg/40 border border-slate-800/60 rounded-3xl p-6 flex flex-col gap-4 overflow-hidden relative">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-2xl shimmer-loader"></div>
+                    <div class="flex-grow flex flex-col gap-2">
+                        <div class="h-5 rounded-lg w-3/4 shimmer-loader"></div>
+                        <div class="h-3 rounded-lg w-1/2 shimmer-loader"></div>
+                    </div>
+                </div>
+                <div class="mt-4 flex flex-col gap-2">
+                    <div class="h-10 rounded-2xl shimmer-loader"></div>
+                    <div class="h-10 rounded-2xl shimmer-loader text-transparent">.</div>
+                </div>
+            </div>
+            <div class="bg-cardBg/40 border border-slate-800/60 rounded-3xl p-6 flex flex-col gap-4 overflow-hidden relative">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-2xl shimmer-loader"></div>
+                    <div class="flex-grow flex flex-col gap-2">
+                        <div class="h-5 rounded-lg w-3/4 shimmer-loader"></div>
+                        <div class="h-3 rounded-lg w-1/2 shimmer-loader"></div>
+                    </div>
+                </div>
+                <div class="mt-4 flex flex-col gap-2">
+                    <div class="h-10 rounded-2xl shimmer-loader"></div>
+                    <div class="h-10 rounded-2xl shimmer-loader"></div>
+                </div>
+            </div>
+            <div class="bg-cardBg/40 border border-slate-800/60 rounded-3xl p-6 flex flex-col gap-4 overflow-hidden relative">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-2xl shimmer-loader"></div>
+                    <div class="flex-grow flex flex-col gap-2">
+                        <div class="h-5 rounded-lg w-3/4 shimmer-loader"></div>
+                        <div class="h-3 rounded-lg w-1/2 shimmer-loader"></div>
+                    </div>
+                </div>
+                <div class="mt-4 flex flex-col gap-2">
+                    <div class="h-10 rounded-2xl shimmer-loader"></div>
+                    <div class="h-10 rounded-2xl shimmer-loader"></div>
+                </div>
+            </div>
+        </section>
 
         <!-- Estado de Erro -->
-        <div id="error-state" class="hidden bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg my-4">
-            <h3 class="font-bold text-lg">Erro ao buscar dados</h3>
-            <p id="error-message">Não foi possível carregar os dados. Tente novamente mais tarde.</p>
-        </div>
+        <section id="error-state" class="hidden max-w-md mx-auto bg-red-950/40 border border-red-800/50 text-red-200 p-6 rounded-3xl text-center shadow-xl animate-fade-in">
+            <div class="w-12 h-12 bg-red-900/50 text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-800">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="font-bold text-lg text-white mb-2">Erro ao buscar dados</h3>
+            <p id="error-message" class="text-sm text-red-300/80 mb-4">Não foi possível carregar os dados. Tente novamente mais tarde.</p>
+            <button onclick="fetchData()" class="bg-red-800 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md">
+                Tentar Novamente
+            </button>
+        </section>
 
         <!-- Resultados -->
-        <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <section id="results-container" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             <!-- Os cards dos apps serão inseridos aqui pelo JavaScript -->
-        </div>
+        </section>
+
+        <!-- Estado Sem Resultados da Busca -->
+        <section id="no-results-state" class="hidden max-w-md mx-auto text-center py-12">
+            <div class="w-16 h-16 bg-slate-900/80 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-800">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h3 class="font-bold text-lg text-white mb-1">Nenhum aplicativo encontrado</h3>
+            <p class="text-sm text-slate-400">Tente ajustar os termos da sua pesquisa ou mude de filtro.</p>
+        </section>
 
     </main>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', fetchData);
+    <!-- Rodapé -->
+    <footer class="border-t border-slate-900 py-6 mt-12 bg-slate-950/60 backdrop-blur-md">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-xs text-slate-500">
+                Os links são coletados de forma automatizada das fontes oficiais dos desenvolvedores.
+            </p>
+            <p class="text-xs text-slate-600 mt-2">
+                &copy; 2026 ATTInstaMod. Todos os direitos reservados.
+            </p>
+        </div>
+    </footer>
 
+    <!-- Script Principal -->
+    <script>
+        let allApps = []; // Guarda todos os apps carregados do backend
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+            setupSearchAndFilters();
+            registerServiceWorker();
+        });
+
+        // Registrar Service Worker para PWA
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(reg => console.log('Service Worker registrado com sucesso:', reg.scope))
+                        .catch(err => console.log('Falha ao registrar Service Worker:', err));
+                });
+            }
+        }
+
+        // Lógica de Prompt de Instalação do PWA
+        let deferredPrompt;
+        const installBanner = document.getElementById('install-banner');
+        const installBtn = document.getElementById('install-btn');
+        const closeInstallBtn = document.getElementById('close-install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Previne o prompt automático padrão
+            e.preventDefault();
+            deferredPrompt = e;
+            // Mostra o banner customizado de instalação
+            installBanner.classList.remove('hidden');
+            installBanner.classList.add('flex');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`PWA escolha de instalação: ${outcome}`);
+                deferredPrompt = null;
+                installBanner.classList.add('hidden');
+                installBanner.classList.remove('flex');
+            }
+        });
+
+        closeInstallBtn.addEventListener('click', () => {
+            installBanner.classList.add('hidden');
+            installBanner.classList.remove('flex');
+        });
+
+        // Busca dados no backend (API scraping)
         async function fetchData() {
             const loadingEl = document.getElementById('loading-state');
             const errorEl = document.getElementById('error-state');
-            const errorMessageEl = document.getElementById('error-message');
             const resultsEl = document.getElementById('results-container');
+            const noResultsEl = document.getElementById('no-results-state');
+
+            loadingEl.classList.remove('hidden');
+            errorEl.classList.add('hidden');
+            resultsEl.classList.add('hidden');
+            noResultsEl.classList.add('hidden');
 
             try {
-                // FAZ A CHAMADA PARA A API DO NOSSO PRÓPRIO SERVIDOR
                 const response = await fetch('/api/scrape');
                 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || `Erro ${response.status}: Falha na requisição`);
+                    throw new Error(errorData.error || `Erro ${response.status}: Falha ao obter dados`);
                 }
 
-                const apps = await response.json();
+                allApps = await response.json();
 
-                if (apps.length === 0) {
-                    throw new Error("Nenhum app com link do MediaFire foi encontrado. O site pode ter mudado.");
+                if (allApps.length === 0) {
+                    throw new Error("Nenhum aplicativo com link direto foi encontrado no momento.");
                 }
 
-                loadingEl.classList.add('hidden'); // Esconde o "carregando"
-                resultsEl.innerHTML = ''; // Limpa resultados antigos
-
-                // Cria um card para cada app
-                apps.forEach(app => {
-                    const card = `
-                        <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
-                            <div class="flex items-center p-4">
-                                <img src="${app.logoUrl}" alt="Logo" class="w-16 h-16 bg-gray-700 rounded-md object-cover mr-4 flex-shrink-0">
-                                <h2 class="text-xl font-bold text-white flex-grow">${app.title}</h2>
-                            </div>
-                            <div class="px-4 pb-4 mt-auto">
-                                <h3 class="text-sm font-semibold text-gray-400 mb-2">Links de Download (MediaFire):</h3>
-                                <div class="flex flex-col space-y-2">
-                                    ${app.links.map(link => `
-                                        <a href="${link.href}" 
-                                           target="_blank" 
-                                           rel="noopener noreferrer"
-                                           class="bg-primary/20 text-primary font-medium py-2 px-3 rounded-md text-sm text-center truncate hover:bg-primary/40 transition-colors">
-                                            ${link.text}
-                                        </a>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    resultsEl.innerHTML += card;
-                });
+                loadingEl.classList.add('hidden');
+                renderApps();
 
             } catch (error) {
-                console.error('Erro detalhado:', error);
-                loadingEl.classList.add('hidden'); // Esconde o "carregando"
-                errorMessageEl.textContent = error.message;
-                errorEl.classList.remove('hidden'); // Mostra o erro
+                console.error('Erro na requisição:', error);
+                loadingEl.classList.add('hidden');
+                document.getElementById('error-message').textContent = error.message;
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        // Configuração de pesquisa e filtros do frontend
+        function setupSearchAndFilters() {
+            const searchInput = document.getElementById('search-input');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+
+            // Escuta campo de busca
+            searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase().trim();
+                renderApps();
+            });
+
+            // Escuta cliques nos botões de filtro
+            filterButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Remove classe ativa de todos
+                    filterButtons.forEach(b => {
+                        b.classList.remove('active', 'bg-primary', 'text-white');
+                        b.classList.add('bg-slate-900/50', 'text-slate-300', 'border-slate-800/80');
+                    });
+                    
+                    // Adiciona classe ativa no clicado
+                    const target = e.currentTarget;
+                    target.classList.add('active', 'bg-primary', 'text-white');
+                    target.classList.remove('bg-slate-900/50', 'text-slate-300', 'border-slate-800/80');
+
+                    currentFilter = target.getAttribute('data-filter');
+                    renderApps();
+                });
+            });
+        }
+
+        // Renderiza os apps filtrados na tela
+        function renderApps() {
+            const resultsEl = document.getElementById('results-container');
+            const noResultsEl = document.getElementById('no-results-state');
+            
+            // 1. Filtra a lista com base no termo de pesquisa e categoria ativa
+            const filteredApps = allApps.filter(app => {
+                // Filtro de Texto
+                const matchesSearch = app.title.toLowerCase().includes(searchQuery);
+                
+                // Filtro de Categoria
+                let matchesCategory = true;
+                const titleLower = app.title.toLowerCase();
+                
+                if (currentFilter === 'instagram') {
+                    // Considera instagram mods
+                    matchesCategory = titleLower.includes('insta') || titleLower.includes('thunder') || titleLower.includes('inxta');
+                } else if (currentFilter === 'youtube') {
+                    // Considera youtube mods
+                    matchesCategory = titleLower.includes('youtube') || titleLower.includes('microg') || titleLower.includes('micro g');
+                }
+                
+                return matchesSearch && matchesCategory;
+            });
+
+            // 2. Controla visualização se não houver resultados
+            if (filteredApps.length === 0) {
+                resultsEl.classList.add('hidden');
+                noResultsEl.classList.remove('hidden');
+                return;
+            }
+
+            noResultsEl.classList.add('hidden');
+            resultsEl.innerHTML = '';
+            resultsEl.classList.remove('hidden');
+
+            // 3. Renderiza os cards
+            filteredApps.forEach(app => {
+                const card = document.createElement('div');
+                card.className = "bg-cardBg border border-slate-800/60 rounded-3xl p-6 shadow-lg hover:shadow-primary/5 hover:border-slate-700/80 transition-all duration-300 flex flex-col group hover:-translate-y-1";
+                
+                // Configuração dos links de download com cores personalizadas para cada plataforma
+                const linksHtml = app.links.map(link => {
+                    const btnStyles = getButtonStyles(link.type);
+                    return `
+                        <a href="${link.href}" 
+                           target="_blank" 
+                           rel="noopener noreferrer"
+                           class="${btnStyles.bg} text-white font-semibold py-2.5 px-4 rounded-2xl text-xs flex items-center justify-between transition-all shadow-md hover:shadow-lg gap-2">
+                            <span class="truncate pr-2">${link.text}</span>
+                            <span class="flex items-center shrink-0 gap-1 text-[10px] uppercase font-bold py-0.5 px-2 bg-black/25 rounded-lg border border-white/10">
+                                ${btnStyles.icon}
+                                ${btnStyles.label}
+                            </span>
+                        </a>
+                    `;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-4 mb-5">
+                        <div class="w-16 h-16 bg-slate-900 rounded-2xl overflow-hidden border border-slate-800/60 flex-shrink-0 group-hover:border-primary/30 transition-colors">
+                            <img src="${app.logoUrl}" alt="${app.title}" 
+                                 onerror="this.src='/app_logo.jpg'"
+                                 class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-grow min-w-0">
+                            <h3 class="text-lg font-bold text-white leading-tight group-hover:text-primary transition-colors truncate">
+                                ${app.title}
+                            </h3>
+                            <span class="text-[10px] text-slate-500 font-semibold tracking-wider uppercase block mt-0.5">
+                                ${detectCategoryLabel(app.title)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-auto">
+                        <div class="border-t border-slate-800/50 pt-4 flex flex-col gap-2">
+                            ${linksHtml}
+                        </div>
+                    </div>
+                `;
+                resultsEl.appendChild(card);
+            });
+        }
+
+        // Detecta a categoria para o rótulo do card
+        function detectCategoryLabel(title) {
+            const t = title.toLowerCase();
+            if (t.includes('insta') || t.includes('thunder') || t.includes('inxta')) {
+                return 'Instagram Mod';
+            }
+            if (t.includes('youtube') || t.includes('microg') || t.includes('micro g')) {
+                return 'YouTube Mod';
+            }
+            return 'App / Utility';
+        }
+
+        // Retorna estilos de botão (cor, rótulo, ícone SVG) de acordo com o tipo de link
+        function getButtonStyles(type) {
+            switch (type) {
+                case 'mediafire':
+                    return {
+                        bg: 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/10 hover:shadow-blue-600/20',
+                        label: 'MediaFire',
+                        icon: `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>`
+                    };
+                case 'gdrive':
+                    return {
+                        bg: 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/10 hover:shadow-emerald-600/20',
+                        label: 'Drive',
+                        icon: `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>`
+                    };
+                case 'mega':
+                    return {
+                        bg: 'bg-red-600 hover:bg-red-500 shadow-red-600/10 hover:shadow-red-600/20',
+                        label: 'Mega',
+                        icon: `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>`
+                    };
+                default:
+                    return {
+                        bg: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/10 hover:shadow-indigo-600/20',
+                        label: 'Direct',
+                        icon: `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>`
+                    };
             }
         }
     </script>
 </body>
 </html>
-
